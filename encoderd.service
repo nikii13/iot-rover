@@ -1,0 +1,15 @@
+[Unit]
+Description=Track NikiC rover wheel encoders
+After=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/encoderd
+Restart=on-failure
+RestartSec=1
+Nice=-10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

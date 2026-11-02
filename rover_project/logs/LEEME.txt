@@ -1,0 +1,1 @@
+Logs CSV de cada ejecución y encodered.log.

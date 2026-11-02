@@ -1,0 +1,1 @@
+Aquí se guardan surface.json (línea negra) y colors.json (colores) al calibrar.

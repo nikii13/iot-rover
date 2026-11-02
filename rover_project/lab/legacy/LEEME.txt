@@ -1,0 +1,2 @@
+Copiad aquí los scripts originales (rover_full.py, rc_pid_lab9_working.py, seguidor de colores...)
+para compararlos con la versión nueva. Nada en el proyecto importa desde esta carpeta.

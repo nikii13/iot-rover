@@ -1,0 +1,6 @@
+# En Raspberry Pi OS se recomienda instalarlos con apt (ver README):
+#   sudo apt install python3-gpiozero python3-lgpio python3-smbus2 i2c-tools
+gpiozero>=2.0
+smbus2>=0.4
+# Solo para las pruebas automáticas (sin hardware):
+pytest>=7

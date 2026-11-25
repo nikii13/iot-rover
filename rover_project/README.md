@@ -10,27 +10,26 @@ línea de colores y el nuevo **seguimiento de línea negra** (`lab/black_line_fo
 
 ---
 
-## 0. Convivencia con vuestro proyecto `iot-rover`
+## 0. Convivencia con el proyecto `iot-rover`
 
 Este proyecto es **independiente** de `~/iot-rover`: va en su propia carpeta
-(`~/rover_project`), no modifica ningún archivo vuestro y **usa el mismo servicio
-de encoders que ya tenéis instalado** (`encoderd.service`, `/usr/local/bin/encoderd`).
+(`~/rover_project`), no modifica los archivos del proyecto original y **usa el mismo servicio
+de encoders que ya tenemos instalado** (`encoderd.service`, `/usr/local/bin/encoderd`).
 
-* El cliente Python habla el protocolo de vuestro `encoderd`: cualquier mensaje → `A,B`.
+* El cliente Python habla el protocolo de nuestro `encoderd`: cualquier mensaje → `A,B`.
   Para el diagnóstico por canal usa su comando `diag`. **Nunca envía `reset`**, para
   no poner a cero los contadores que pueda estar usando otro programa.
 * `scripts/start_services.sh` detecta que `encoderd.service` está activo y **no arranca
-  nada más**. El `encodered` de `cpp/` es solo una alternativa para una Pi sin vuestro
-  servicio: nunca se ejecuta a la vez que el vuestro (ambos usarían los mismos GPIO).
+  nada más**. El `encodered` de `cpp/` es solo una alternativa para una Pi sin el servicio original: nunca se ejecuta a la vez que el servicio original (ambos usarían los mismos GPIO).
 * `scripts/stop_services.sh` **no toca** `encoderd.service`.
-* **No ejecutéis a la vez** un programa de `iot-rover` y otro de `rover_project`: los dos
-  escribirían en los GPIO de los motores. Uno cada vez, y comparad los logs.
+* **No ejecutar a la vez** un programa de `iot-rover` y otro de `rover_project`: los dos
+  escribirían en los GPIO de los motores. Ejecutar uno cada vez y comparar los logs.
 
-Lo que se ha comprobado de vuestro `encoderd` (iot-rover = cpsy-encoder-final = binario
+Lo que se ha comprobado de nuestro `encoderd` (iot-rover = cpsy-encoder-final = binario
 instalado): cuenta **flancos de subida** de cada canal por separado y devuelve
 `max(C1, C2)` por motor. **No da sentido de giro** (las cuentas solo suben), así que
 este proyecto toma el sentido de la orden aplicada al motor
-(`ENCODER_SIGN_FROM_COMMAND = True`, obligatorio con vuestro servicio). Los 700 PPR son
+(`ENCODER_SIGN_FROM_COMMAND = True`, obligatorio con el servicio original). Los 700 PPR son
 flancos de subida de **un** canal por vuelta, que es lo que mide `tests/hw_encoder_ppr.py`.
 
 ---
@@ -113,47 +112,45 @@ Extensiones solo de diagnóstico, que no afectan al formato original: `STATUS`
 
 ---
 
-## 3. Qué se ha hecho con la información disponible (y discrepancias)
+## 3. Decisiones de implementación y discrepancias
 
-No se proporcionaron los archivos originales del laboratorio, así que el proyecto
-se ha construido a partir de la especificación. Para no inventar datos:
+El proyecto se ha construido a partir de la especificación del laboratorio. Los parámetros que todavía requieren verificación física se indican a continuación:
 
 | Elemento | Decisión | Estado |
 |---|---|---|
-| Pines motor 12/18, 13/19 y encoder 17/27/22/23 | Tal como los indicasteis | [USUARIO] — verificar con `hw_test_motors.py` y `encoder_status.py` |
+| Pines motor 12/18, 13/19 y encoder 17/27/22/23 | Según la configuración del laboratorio | [USUARIO] — verificar con `hw_test_motors.py` y `encoder_status.py` |
 | Qué señal es "adelante" y qué motor es el izquierdo | Configurable (`MOTOR_*_INVERT`, `MOTOR_A_SIDE`) | [PENDIENTE] — `hw_test_motors.py` lo determina |
 | Socket `/tmp/encoder.sock`, DGRAM, `A,B` | Conservado | [USUARIO] |
-| Servicio de encoders | **Se usa vuestro `encoderd`** (systemd). `cpp/encodered` es una alternativa que solo se arranca si no hay ningún servicio | ver §0 |
-| Librería GPIO del C++ | Vuestro `encoderd` usa `lgpio`; el `encodered` alternativo usa la interfaz de carácter del kernel | |
+| Servicio de encoders | **Se usa nuestro `encoderd`** (systemd). `cpp/encodered` es una alternativa que solo se arranca si no hay ningún servicio | ver §0 |
+| Librería GPIO del C++ | Nuestro `encoderd` usa `lgpio`; el `encodered` alternativo usa la interfaz de carácter del kernel | |
 | `PULSES_PER_REV = 700`, rueda 4,8 cm | Conservados | [USUARIO] — medir con `hw_encoder_ppr.py` |
 | PID y feed-forward | Conservados los valores experimentales | [USUARIO] — ver advertencia de abajo |
 | Sensor TCS34725, dirección 0x29 | 0x29 es la dirección fija del fabricante; el driver comprueba el registro ID y falla si no es un TCS3472x | verificar con `i2cdetect -y 1` |
 | Modelo de IMU | **No se supone**: se detecta por WHO_AM_I (familias MPU-6050/6500/9250 e ICM-206xx, y LSM6DS3/DSL/DSO). Si es otra, el programa lo dice y puede funcionar sin IMU | [PENDIENTE] |
 | Algoritmo de 3 colores | **No disponible.** `color_line_follow.py` es una reconstrucción sobre la misma arquitectura, no una copia del original | ver `lab/color_line_follow.py` |
-| Nº de sensores de línea | Se ha diseñado para **un único sensor** (el escenario de la especificación). No se inventa ninguna matriz de sensores | |
+| Nº de sensores de línea | Se ha diseñado para **un único sensor** (el escenario de la especificación). No se utiliza una matriz de sensores | |
 | Vía entre ruedas, posición del sensor | No documentadas | [PENDIENTE] |
 
-Si recuperáis los archivos originales (`lab/`, `encoder.cpp`, `rover_full.py`,
-`rc_pid_lab9_working.py`, el seguidor de colores), copiadlos en `lab/legacy/` y
-comparad: pines, modo de conteo del encoder, factor PPR y acciones por color.
+Si recuperamos los archivos originales (`lab/`, `encoder.cpp`, `rover_full.py`,
+`rc_pid_lab9_working.py`, el seguidor de colores), podemos copiarlos en `lab/legacy/` y
+comparar: pines, modo de conteo del encoder, factor PPR y acciones por color.
 Cualquier diferencia debe resolverse a favor de lo que esté verificado físicamente.
 
-### Dos indicios en vuestros datos que conviene comprobar primero
+### Dos indicios en los datos experimentales que conviene comprobar primero
 
 1. **Encoders.** "Motor A = 0 pulsos" y "GPIO 23 siempre a 0" encajan con un canal
    muerto. Con decodificación en cuadratura completa (x4), un canal muerto hace que el
    contador sume +1 y −1 alternativamente y se quede en ~0. Por eso el servicio usa por
    defecto **x1** (flancos de subida del canal 1) y Python toma el **sentido de la orden
    aplicada** (`ENCODER_SIGN_FROM_COMMAND = True`). `encoder_status.py` muestra los flancos
-   de cada canal y dice cuál falla. Si cambiáis el modo (x2/x4), cambia el número de
+   de cada canal y dice cuál falla. Si cambiamos el modo (x2/x4), cambia el número de
    cuentas por vuelta y hay que volver a medir `PULSES_PER_REV`.
 2. **Feed-forward.** `FF_A = 0.0100` frente a `FF_B = 0.0015` supone que el motor B daría
    6,7 veces más RPM con el mismo PWM. Es poco probable entre dos motores iguales; es más
    probable que los dos encoders no cuenten igual (modo o canal distinto). En el
    simulador, con motores parecidos, esos valores hacen que el motor B tarde unos 20 s en
    alcanzar el objetivo, porque KI es muy bajo. Eso produce desviaciones y correcciones
-   tardías como las que describís. **Medid con `pidtest.py --ff-fit` antes de tocar nada
-   del seguidor.**
+   tardías como las observadas. **Conviene medir con `pidtest.py --ff-fit` antes de modificar el seguidor.**
 
 ---
 
@@ -240,7 +237,7 @@ En una curva a la derecha se sale hacia el fondo blanco, donde no hay margen ni
 información. Con un solo control proporcional, para girar de forma continua el sensor
 tiene que quedarse desplazado del borde, y en las curvas a la derecha se queda junto al
 blanco. El término integral (`LINE_KI_DPS = 80`) lo devuelve al borde durante la curva.
-Si vuestra pista tiene sobre todo curvas a la derecha, seguid el borde derecho
+Si la pista tiene sobre todo curvas a la derecha, conviene seguir el borde derecho
 (`--edge right`).
 
 Además: `IMU_YAW_SIGN = -1` (medido dos veces), `TRACK_WIDTH_CM = 10.2`, y la búsqueda
@@ -285,7 +282,7 @@ de reflectancia analógico en otro canal del MCP3008) o un motor A más rápido.
 llega a ≥ 2,0 V (unos 20 cm), se detiene en el estado `OBSTACLE`. Reanuda cuando la
 tensión se mantiene por debajo de 1,7 V durante 1 s. Si el objeto sigue ahí más de 60 s,
 termina. Durante la parada no cuentan los temporizadores de línea perdida. Los giros
-sobre sí mismo (búsqueda) no se bloquean, igual que en vuestro programa. Si falla la
+sobre sí mismo (búsqueda) no se bloquean, igual que en el programa original. Si falla la
 lectura del sensor, se produce una parada de seguridad. `--no-distance` lo desactiva.
 
 ---
@@ -297,7 +294,7 @@ lectura del sensor, se produce una parada de seguridad. `--no-distance` lo desac
 ```bash
 python3 lab/convoy.py --role follower                              # seguidor
 python3 lab/convoy.py --role leader --leader-mode line --base-rpm 22  # líder que sigue la línea, despacio
-python3 lab/convoy.py --role leader --leader-mode manual           # líder a mano: indica vuestro programa RC
+python3 lab/convoy.py --role leader --leader-mode manual           # líder a mano: indica el programa RC original
 ```
 
 **Antes, en cada seguidor:** calibrar la línea (`black_line_follow.py --calibrate`) y el
@@ -319,7 +316,7 @@ que siempre, y la velocidad de avance la decide la distancia al de delante.
 | Pierde la línea en una curva | Búsqueda acotada con barridos más amplios (110°/120°) que fuera del convoy; el convoy no la interrumpe |
 | Recta y bien centrado | Puede ir hasta `CONVOY_MAX_RPM` para alcanzar al líder; en las correcciones, como máximo la base |
 
-**Velocidad máxima (simulación con vuestros motores; falta medirlo en la pista):**
+**Velocidad máxima (simulación con los motores del rover; falta medirlo en la pista):**
 
 | Líder | Recta | Curvas (90° R20 + 90° R15) |
 |---|---|---|
@@ -339,7 +336,7 @@ del enunciado: más despacio es más preciso.
 ## 6. Instalación en la Raspberry Pi
 
 ```bash
-# 0. Si tenéis un entorno virtual activo "(venv)", salid de él: los paquetes de apt no se ven dentro
+# 0. Si hay un entorno virtual activo "(venv)", salir de él: los paquetes de apt no se ven dentro
 deactivate 2>/dev/null || true
 
 # 1. Dependencias del sistema (Raspberry Pi OS Bookworm o posterior)
@@ -349,7 +346,7 @@ sudo apt install -y unzip build-essential python3-gpiozero python3-lgpio python3
 
 # 2. Activar I2C y comprobar permisos
 sudo raspi-config nonint do_i2c 0
-sudo usermod -aG gpio,i2c $USER      # cerrad sesión y volved a entrar
+sudo usermod -aG gpio,i2c $USER      # cerrar sesión y volver a entrar
 
 # 3. Descomprimir y compilar
 unzip rover_project.zip && cd rover_project
@@ -382,7 +379,7 @@ cd rover_project
 
 # Línea negra
 python3 lab/black_line_follow.py --calibrate          # una vez por pista/iluminación
-python3 lab/black_line_follow.py --no-motors          # empujad el rover a mano: ver estados sin moverse
+python3 lab/black_line_follow.py --no-motors          # empujar el rover a mano: ver estados sin moverse
 python3 lab/black_line_follow.py --max-time 60        # seguir la línea
 python3 lab/black_line_follow.py --edge right --base-rpm 30
 python3 lab/black_line_follow.py --auto-calibrate     # calibra girando sobre la línea y sigue
@@ -401,19 +398,19 @@ Ctrl+C detiene los motores en cualquier momento.
 | # | Comando | Qué comprobar / qué ajustar |
 |---|---|---|
 | 0 | `./scripts/check_system.sh` | `0x29` (TCS34725) y la IMU en `i2cdetect`; usuario en `gpio` |
-| 1 | `python3 lab/encoder_status.py` (girad cada rueda a mano) | Los **4 canales** con flancos. Si un canal no tiene flancos, el resumen lo indica |
+| 1 | `python3 lab/encoder_status.py` (girar cada rueda a mano) | Los **4 canales** con flancos. Si un canal no tiene flancos, el resumen lo indica |
 | 1b | `python3 tests/hw_encoder_ppr.py --turns 10` | `PULSES_PER_REV_A/B` reales en el modo actual |
 | 2 | `python3 tests/hw_test_motors.py` (ruedas en el aire) | Propone `MOTOR_A_SIDE`, `MOTOR_*_INVERT`; detecta encoders intercambiados |
 | 3 | `python3 lab/pidtest.py --ff-fit` y luego `python3 lab/pidtest.py --rpm 40` | Propone `FF_*_PER_RPM`, `FF_*_STATIC`, `MAX_RPM`; el PID debe quedar a ±2 RPM del objetivo |
 | 4 | `python3 lab/imu.py` | Bias y ruido; girando a mano a la izquierda el ángulo **aumenta** (si no, `IMU_YAW_SIGN = -1`) |
 | 4b | `python3 tests/hw_calibrate_turn.py` (en el suelo) | `RPM_PER_DEGPS` real y confirmación de signos |
 | 5 | `python3 lab/color_sensor.py` | Valores C sobre negro, fondo y borde; sin "SATURADO". Contraste ≥ 25 % |
-| 6 | `python3 lab/color_line_follow.py --calibrate` y ejecutar | Sigue la línea de colores; comparad con el comportamiento del programa antiguo |
+| 6 | `python3 lab/color_line_follow.py --calibrate` y ejecutar | Sigue la línea de colores; comparar con el comportamiento del programa antiguo |
 | 7 | `python3 lab/black_line_follow.py --no-motors`, después sin `--no-motors` | Estados correctos al empujar a mano; seguimiento y recuperación |
 | 8 | Pista en **ambos sentidos** (primera curva a la izquierda y a la derecha), con `--edge left` y `--edge right` | Responde a la curva izquierda; tras el final de la línea busca y se para |
 
 **Ajuste del seguidor (en este orden):** `BASE_RPM` bajo (25–30) → `LINE_KP_DPS`
-(oscila: bajadlo; se sale en curvas: subidlo) → `LINE_KD_DPS` → `YAW_RATE_KP` → subir
+(si oscila: reducirlo; si se sale en curvas: aumentarlo) → `LINE_KD_DPS` → `YAW_RATE_KP` → subir
 `BASE_RPM`. En cada ejecución se guarda un CSV en `logs/` con estado, cobertura, RPM
 objetivo/medidas, error PID, PWM, `omega` pedida/medida, corrección IMU y motivos de
 búsqueda/parada.
@@ -424,7 +421,7 @@ búsqueda/parada.
 
 * `make -C cpp test`: decodificador pulse/x1/x2/x4, ambos sentidos, canal muerto, flancos perdidos.
 * `pytest tests` (117 pruebas):
-  * Compatibilidad con vuestro `encoderd` (respuesta `A,B` a todo, `diag`, sin `reset`).
+  * Compatibilidad con nuestro `encoderd` (respuesta `A,B` a todo, `diag`, sin `reset`).
   * Protocolo real de `encodered` compilado en modo `--no-gpio` (`GET`/`STATUS`/`PING`),
     bloqueo de doble instancia y limpieza del socket.
   * Cliente: timeouts, respuestas inválidas, servicio caído.
